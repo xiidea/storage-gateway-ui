@@ -1,6 +1,6 @@
 # Storage Gateway UI
 
-A browser-based admin console for [storage-gateway](https://github.com/ronisaha/storage-gateway) — a multi-tenant S3-compatible object storage proxy.
+A browser-based admin console for [storage-gateway](https://github.com/xiidea/storage-gateway) — a multi-tenant S3-compatible object storage proxy.
 
 Built with Angular 21, zoneless change detection, and signals. No external UI framework dependencies.
 
@@ -18,10 +18,10 @@ Built with Angular 21, zoneless change detection, and signals. No external UI fr
 
 ## Prerequisites
 
-| Tool | Version |
-|------|---------|
-| Node.js | 22+ |
-| npm | 10+ |
+| Tool            | Version                            |
+|-----------------|------------------------------------|
+| Node.js         | 22+                                |
+| npm             | 10+                                |
 | storage-gateway | running on port `9001` (admin API) |
 
 The gateway must have CORS enabled so the browser can reach the admin API directly. Set the `CORS_ALLOWED_ORIGINS` (or equivalent) config on the server to include your UI origin.
