@@ -77,10 +77,10 @@ Images are published to the GitHub Container Registry on every push to `main` an
 
 ```bash
 # latest build from main
-docker pull ghcr.io/your-org/storage-gateway-ui:latest
+docker pull ghcr.io/xiidea/storage-gateway-ui:latest
 
 # specific release
-docker pull ghcr.io/your-org/storage-gateway-ui:1.2.3
+docker pull ghcr.io/xiidea/storage-gateway-ui:1.2.3
 ```
 
 ---
