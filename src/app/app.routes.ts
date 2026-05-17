@@ -18,5 +18,9 @@ export const routes: Routes = [
     path: 'settings',
     loadComponent: () => import('./features/settings/settings').then(m => m.SettingsComponent),
   },
+  {
+    path: 'browser/:tenantId/:storeId/:mappingId',
+    loadComponent: () => import('./features/browser/browser').then(m => m.BrowserComponent),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

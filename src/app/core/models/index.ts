@@ -74,3 +74,47 @@ export interface Toast {
   type: 'success' | 'error' | 'info';
   message: string;
 }
+
+// ── File Browser ─────────────────────────────────────────────────
+
+export interface BrowseObject {
+  key:            string;
+  size:           number;
+  last_modified:  string;
+  etag:           string;
+  storage_class:  string;
+}
+
+export interface BrowseObjectMetadata extends BrowseObject {
+  content_type:  string;
+  user_metadata: Record<string, string>;
+}
+
+export interface ListObjectsResponse {
+  prefix:                   string;
+  delimiter:                string;
+  max_keys:                 number;
+  key_count:                number;
+  is_truncated:             boolean;
+  next_continuation_token:  string | null;
+  objects:                  BrowseObject[];
+  common_prefixes:          string[];
+}
+
+export interface PresignResponse {
+  url:         string;
+  expires_at:  string;
+}
+
+export interface FolderSizeEvent {
+  scanned:     number;
+  total_bytes: number;
+  error?:      string;
+}
+
+export interface BrowserEntry {
+  type:    'folder' | 'file';
+  name:    string;
+  prefix?: string;
+  object?: BrowseObject;
+}

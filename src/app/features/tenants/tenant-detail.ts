@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
@@ -503,11 +504,18 @@ import {
                     <span class="mono" style="font-size:13px">{{ b.gateway_bucket }}</span>
                     <span class="arrow">→</span>
                     <span class="mono" style="font-size:13px;color:var(--color-text-muted)">{{ b.backend_bucket }}</span>
-                    <button class="btn btn-ghost btn-sm"
-                            style="margin-left:auto;color:var(--color-error)"
-                            (click)="confirmDeleteBucket(b)">
-                      <span class="material-symbols-rounded" style="font-size:14px">delete</span>
-                    </button>
+                    <div style="display:flex;gap:4px;margin-left:auto">
+                      <button class="btn btn-ghost btn-sm"
+                              title="Browse files"
+                              (click)="openBrowser(activeBucketStore()!.id, b)">
+                        <span class="material-symbols-rounded" style="font-size:14px">folder_open</span>
+                      </button>
+                      <button class="btn btn-ghost btn-sm"
+                              style="color:var(--color-error)"
+                              (click)="confirmDeleteBucket(b)">
+                        <span class="material-symbols-rounded" style="font-size:14px">delete</span>
+                      </button>
+                    </div>
                   </li>
                 }
               </ul>
@@ -582,8 +590,9 @@ import {
   `,
 })
 export class TenantDetailComponent implements OnInit {
-  private api   = inject(ApiService);
-  private toast = inject(ToastService);
+  private api    = inject(ApiService);
+  private toast  = inject(ToastService);
+  private router = inject(Router);
 
   id = input.required<string>();
 
@@ -818,6 +827,12 @@ export class TenantDetailComponent implements OnInit {
         this.addingBucket.set(false);
         this.toast.error(`Failed: ${err.message}`);
       },
+    });
+  }
+
+  openBrowser(storeId: string, bucket: BucketMapping) {
+    this.router.navigate(['/browser', this.id(), storeId, bucket.id], {
+      queryParams: { bucket: bucket.gateway_bucket },
     });
   }
 
