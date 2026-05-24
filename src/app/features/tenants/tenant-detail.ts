@@ -164,6 +164,7 @@ import {
     }
 
     .modal-wide { max-width: 620px !important; }
+    .modal-xl   { max-width: 820px !important; }
 
     .backend-tabs {
       display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px;
@@ -499,7 +500,7 @@ import {
     <!-- ══ Bucket mappings modal ══ -->
     @if (activeBucketStore()) {
       <div class="modal-backdrop" (click)="activeBucketStore.set(null)">
-        <div class="modal modal-wide" (click)="$event.stopPropagation()" style="max-width:680px">
+        <div class="modal modal-xl" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h2>Bucket Mappings — {{ activeBucketStore()!.name }}</h2>
             <button class="btn btn-ghost" (click)="activeBucketStore.set(null)">
@@ -507,7 +508,7 @@ import {
             </button>
           </div>
           <div class="modal-body">
-            <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px">
+            <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:0px">
               <div class="form-group" style="flex:1;margin:0">
                 <label>Gateway Bucket</label>
                 <input [(ngModel)]="newGatewayBucket" placeholder="acme-uploads" />
@@ -523,6 +524,9 @@ import {
                 <span class="material-symbols-rounded" style="font-size:16px">add</span>
               </button>
             </div>
+            <p class="hint" style="margin-bottom:16px">Backend bucket supports a path prefix, e.g.
+              <code style="font-style:italic; background-color:var(--color-bg); font-family:var(--font-mono)">
+                my-bucket/folder/prefix</code></p>
 
             @if (loadingBuckets()) {
               <div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>
