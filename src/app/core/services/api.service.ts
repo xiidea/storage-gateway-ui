@@ -62,6 +62,14 @@ export class ApiService {
     return this.http.delete(this.url(`/tenants/${tenantId}/stores/${storeId}`));
   }
 
+  getCors(tenantId: string, storeId: string) {
+    return this.http.get<{ allowed_origins: string[] }>(this.url(`/tenants/${tenantId}/stores/${storeId}/cors`));
+  }
+
+  updateCors(tenantId: string, storeId: string, origins: string[]) {
+    return this.http.put(this.url(`/tenants/${tenantId}/stores/${storeId}/cors`), { allowed_origins: origins });
+  }
+
   // Bucket mappings
   createBucket(tenantId: string, storeId: string, gateway_bucket: string, backend_bucket: string) {
     return this.http.post<BucketMapping>(

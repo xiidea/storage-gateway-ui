@@ -13,6 +13,7 @@ export interface Store {
   name: string;
   backend_type: BackendType;
   presigned_mode: PresignedMode;
+  allowed_origins: string[];
   created_at: string;
   updated_at: string;
 }

@@ -184,6 +184,28 @@ import {
       border-top: 1px solid var(--color-border);
       margin: 32px 0;
     }
+
+    .cors-origin-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .cors-origin-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-md);
+      font-family: var(--font-mono);
+      font-size: 12px;
+
+      .origin-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
   `],
   template: `
     <div class="page">
@@ -346,6 +368,14 @@ import {
                   <span>Buckets</span>
                   <span>{{ bucketCount(store.id) }} mappings</span>
                 </div>
+                <div class="meta-row">
+                  <span>CORS</span>
+                  @if (store.allowed_origins.length) {
+                    <span>{{ store.allowed_origins.length }} origin{{ store.allowed_origins.length === 1 ? '' : 's' }}</span>
+                  } @else {
+                    <span style="color:var(--color-text-muted)">disabled</span>
+                  }
+                </div>
               </div>
               <div class="store-actions">
                 <button class="btn btn-secondary btn-sm" (click)="openBuckets(store)">
@@ -355,6 +385,10 @@ import {
                 <button class="btn btn-ghost btn-sm" (click)="openUpdateBackend(store)">
                   <span class="material-symbols-rounded" style="font-size:14px">edit</span>
                   Credentials
+                </button>
+                <button class="btn btn-ghost btn-sm" (click)="openCors(store)">
+                  <span class="material-symbols-rounded" style="font-size:14px">public</span>
+                  CORS
                 </button>
                 <button class="btn btn-ghost btn-sm"
                         style="margin-left:auto;color:var(--color-error)"
@@ -562,6 +596,64 @@ import {
       </div>
     }
 
+    <!-- ══ CORS modal ══ -->
+    @if (corsStore()) {
+      <div class="modal-backdrop" (click)="corsStore.set(null)">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>CORS Origins — {{ corsStore()!.name }}</h2>
+            <button class="btn btn-ghost" (click)="corsStore.set(null)">
+              <span class="material-symbols-rounded">close</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:14px">
+              Browser origins allowed to make cross-origin requests to the S3 gateway for this store's buckets.
+              Use <code style="font-family:var(--font-mono)">*</code> to allow all origins.
+            </p>
+
+            @if (corsOrigins().length === 0) {
+              <div class="empty-state" style="padding:20px 0">
+                <span class="material-symbols-rounded">public_off</span>
+                <p>No origins configured — CORS is disabled for this store.</p>
+              </div>
+            } @else {
+              <ul class="cors-origin-list">
+                @for (origin of corsOrigins(); track origin) {
+                  <li class="cors-origin-item">
+                    <span class="origin-text">{{ origin }}</span>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--color-error);padding:2px 6px"
+                            (click)="removeCorsOrigin(origin)">
+                      <span class="material-symbols-rounded" style="font-size:14px">close</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+
+            <div style="display:flex;gap:8px;align-items:center">
+              <input style="flex:1" [(ngModel)]="newCorsOrigin"
+                     placeholder="https://app.example.com or *"
+                     (keydown.enter)="addCorsOrigin()" />
+              <button class="btn btn-secondary btn-sm"
+                      [disabled]="!newCorsOrigin.trim()"
+                      (click)="addCorsOrigin()">
+                <span class="material-symbols-rounded" style="font-size:16px">add</span>
+                Add
+              </button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-ghost" (click)="corsStore.set(null)">Cancel</button>
+            <button class="btn btn-primary" [disabled]="savingCors()" (click)="saveCors()">
+              @if (savingCors()) { <div class="spinner"></div> }
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- ══ Confirm dialogs ══ -->
     @if (revokeTarget()) {
       <app-confirm-dialog
@@ -628,6 +720,12 @@ export class TenantDetailComponent implements OnInit {
   updateConfigRaw   = '{}';
   updatePresignedMode: PresignedMode = 'proxy';
   savingUpdate      = signal(false);
+
+  // CORS
+  corsStore      = signal<Store | null>(null);
+  corsOrigins    = signal<string[]>([]);
+  newCorsOrigin  = '';
+  savingCors     = signal(false);
 
   // Store form state
   storeForm = { name: '', backend_type: 's3' as BackendType, presigned_mode: 'proxy' as PresignedMode };
@@ -877,6 +975,43 @@ export class TenantDetailComponent implements OnInit {
       error: (err) => {
         this.savingUpdate.set(false);
         this.toast.error(`Failed: ${err.message}`);
+      },
+    });
+  }
+
+  // ── CORS ────────────────────────────────────────────────────
+
+  openCors(store: Store) {
+    this.corsStore.set(store);
+    this.corsOrigins.set([...store.allowed_origins]);
+    this.newCorsOrigin = '';
+  }
+
+  addCorsOrigin() {
+    const v = this.newCorsOrigin.trim();
+    if (!v || this.corsOrigins().includes(v)) return;
+    this.corsOrigins.update(list => [...list, v]);
+    this.newCorsOrigin = '';
+  }
+
+  removeCorsOrigin(origin: string) {
+    this.corsOrigins.update(list => list.filter(o => o !== origin));
+  }
+
+  saveCors() {
+    const store = this.corsStore();
+    if (!store) return;
+    this.savingCors.set(true);
+    this.api.updateCors(this.id(), store.id, this.corsOrigins()).subscribe({
+      next: () => {
+        this.savingCors.set(false);
+        this.corsStore.set(null);
+        this.toast.success('CORS origins updated');
+        this.loadStores();
+      },
+      error: (err) => {
+        this.savingCors.set(false);
+        this.toast.error(`Failed to update CORS: ${err.message}`);
       },
     });
   }
