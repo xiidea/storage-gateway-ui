@@ -194,6 +194,29 @@ import {
       margin-bottom: 14px;
     }
 
+    .readonly-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-md);
+      cursor: pointer;
+
+      input[type="checkbox"] {
+        margin-top: 2px;
+        accent-color: var(--color-secondary);
+        cursor: pointer;
+      }
+
+      .readonly-check-title {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+    }
+
     .cors-origin-item {
       display: flex;
       align-items: center;
@@ -239,9 +262,7 @@ import {
       <!-- ═══════════════ ACCESS KEYS ═══════════════ -->
       <div class="section-header">
         <h2>Access Keys</h2>
-        <button class="btn btn-primary btn-sm"
-                [disabled]="creatingKey()"
-                (click)="createKey()">
+        <button class="btn btn-primary btn-sm" (click)="openCreateKey()">
           <span class="material-symbols-rounded" style="font-size:16px">add</span>
           Generate Key
         </button>
@@ -254,6 +275,12 @@ import {
             <div><b>Access Key:</b> {{ newKey()!.access_key }}</div>
             <div><b>Secret Key:</b> {{ newKey()!.secret_key }}</div>
           </div>
+          @if (newKey()!.readonly) {
+            <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
+              <span class="chip chip-info">Read-only</span>
+              <span>This key can only download and list objects.</span>
+            </div>
+          }
           <div style="display:flex;gap:6px;margin-top:10px">
             <button class="btn btn-ghost btn-sm" (click)="copySecret()">
               <span class="material-symbols-rounded" style="font-size:14px">content_copy</span>
@@ -281,6 +308,7 @@ import {
               <tr>
                 <th>Access Key ID</th>
                 <th>Created</th>
+                <th>Access</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -291,6 +319,13 @@ import {
                   <td><span class="mono">{{ k.access_key }}</span></td>
                   <td>{{ k.created_at | date:'d MMM yyyy, HH:mm' }}</td>
                   <td>
+                    @if (k.readonly) {
+                      <span class="chip chip-info">Read-only</span>
+                    } @else {
+                      <span class="chip chip-neutral">Read / Write</span>
+                    }
+                  </td>
+                  <td>
                     @if (k.revoked_at) {
                       <span class="chip chip-error">Revoked</span>
                     } @else {
@@ -299,12 +334,23 @@ import {
                   </td>
                   <td>
                     @if (!k.revoked_at) {
-                      <button class="btn btn-ghost btn-sm"
-                              style="color:var(--color-error)"
-                              (click)="confirmRevoke(k)">
-                        <span class="material-symbols-rounded" style="font-size:14px">block</span>
-                        Revoke
-                      </button>
+                      <div style="display:flex;gap:4px;justify-content:flex-end">
+                        <button class="btn btn-ghost btn-sm"
+                                [disabled]="togglingKeyId() === k.id"
+                                [title]="k.readonly ? 'Allow write operations for this key' : 'Restrict this key to read operations'"
+                                (click)="toggleReadonly(k)">
+                          <span class="material-symbols-rounded" style="font-size:14px">
+                            {{ k.readonly ? 'lock_open' : 'lock' }}
+                          </span>
+                          {{ k.readonly ? 'Allow writes' : 'Make read-only' }}
+                        </button>
+                        <button class="btn btn-ghost btn-sm"
+                                style="color:var(--color-error)"
+                                (click)="confirmRevoke(k)">
+                          <span class="material-symbols-rounded" style="font-size:14px">block</span>
+                          Revoke
+                        </button>
+                      </div>
                     }
                   </td>
                 </tr>
@@ -403,6 +449,44 @@ import {
       }
 
     </div>
+
+    <!-- ══ Generate Key modal ══ -->
+    @if (showCreateKey()) {
+      <div class="modal-backdrop" (click)="showCreateKey.set(false)">
+        <div class="modal" style="max-width:440px" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Generate Access Key</h2>
+            <button class="btn btn-ghost" (click)="showCreateKey.set(false)">
+              <span class="material-symbols-rounded">close</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:14px">
+              Creates an S3-compatible credential pair for this tenant.
+              The secret key is shown only once, right after creation.
+            </p>
+            <label class="readonly-check">
+              <input type="checkbox" [(ngModel)]="newKeyReadonly" />
+              <div>
+                <div class="readonly-check-title">Read-only key</div>
+                <div class="hint">
+                  Restricted to downloads and listings (GET / HEAD).
+                  Uploads, deletes and multipart operations are rejected with 403.
+                  Can be changed later.
+                </div>
+              </div>
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-ghost" (click)="showCreateKey.set(false)">Cancel</button>
+            <button class="btn btn-primary" [disabled]="creatingKey()" (click)="createKey()">
+              @if (creatingKey()) { <div class="spinner"></div> }
+              Generate Key
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- ══ Create Store modal ══ -->
     @if (showCreateStore()) {
@@ -696,11 +780,14 @@ export class TenantDetailComponent implements OnInit {
   loadingTenant = signal(true);
 
   // Keys
-  keys         = signal<AccessKey[]>([]);
-  loadingKeys  = signal(true);
-  creatingKey  = signal(false);
-  newKey       = signal<AccessKey | null>(null);
-  revokeTarget = signal<AccessKey | null>(null);
+  keys           = signal<AccessKey[]>([]);
+  loadingKeys    = signal(true);
+  showCreateKey  = signal(false);
+  newKeyReadonly = false;
+  creatingKey    = signal(false);
+  newKey         = signal<AccessKey | null>(null);
+  revokeTarget   = signal<AccessKey | null>(null);
+  togglingKeyId  = signal<string | null>(null);
 
   // Stores
   stores        = signal<Store[]>([]);
@@ -766,11 +853,17 @@ export class TenantDetailComponent implements OnInit {
     });
   }
 
+  openCreateKey() {
+    this.newKeyReadonly = false;
+    this.showCreateKey.set(true);
+  }
+
   createKey() {
     this.creatingKey.set(true);
-    this.api.createKey(this.id()).subscribe({
+    this.api.createKey(this.id(), this.newKeyReadonly).subscribe({
       next: (k) => {
         this.creatingKey.set(false);
+        this.showCreateKey.set(false);
         this.newKey.set(k);
         this.loadKeys();
         this.toast.success('Access key generated');
@@ -778,6 +871,23 @@ export class TenantDetailComponent implements OnInit {
       error: (err) => {
         this.creatingKey.set(false);
         this.toast.error(`Failed to create key: ${err.message}`);
+      },
+    });
+  }
+
+  toggleReadonly(k: AccessKey) {
+    this.togglingKeyId.set(k.id);
+    this.api.setKeyReadonly(this.id(), k.id, !k.readonly).subscribe({
+      next: (updated) => {
+        this.togglingKeyId.set(null);
+        this.keys.update(list => list.map(key => key.id === updated.id ? updated : key));
+        this.toast.success(updated.readonly
+          ? `Key ${updated.access_key} is now read-only`
+          : `Key ${updated.access_key} can now write`);
+      },
+      error: (err) => {
+        this.togglingKeyId.set(null);
+        this.toast.error(`Failed to update key: ${err.message}`);
       },
     });
   }

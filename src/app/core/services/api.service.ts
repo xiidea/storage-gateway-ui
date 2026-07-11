@@ -29,8 +29,12 @@ export class ApiService {
   }
 
   // Access keys
-  createKey(tenantId: string) {
-    return this.http.post<AccessKey>(this.url(`/tenants/${tenantId}/keys`), {});
+  createKey(tenantId: string, readonly = false) {
+    return this.http.post<AccessKey>(this.url(`/tenants/${tenantId}/keys`), { readonly });
+  }
+
+  setKeyReadonly(tenantId: string, keyId: string, readonly: boolean) {
+    return this.http.put<AccessKey>(this.url(`/tenants/${tenantId}/keys/${keyId}/readonly`), { readonly });
   }
 
   listKeys(tenantId: string) {

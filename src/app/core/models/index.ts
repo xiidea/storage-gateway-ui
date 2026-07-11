@@ -30,8 +30,9 @@ export interface AccessKey {
   tenant_id: string;
   access_key: string;
   secret_key?: string;
+  readonly: boolean;
   created_at: string;
-  revoked_at?: string;
+  revoked_at?: string | null;
 }
 
 export interface BucketMapping {
